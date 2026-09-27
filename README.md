@@ -1,3 +1,70 @@
+> **本仓库是上游的 fork，用于个人自建的 geo 规则流水线。**
+>
+> 三个仓的分工：
+>
+> | 仓库 | 角色 |
+> |---|---|
+> | [`imacte/domain-list-custom`](https://github.com/imacte/domain-list-custom) | `geosite.dat` 的**编译器** + 自定义域名列表（`custom-data/`） |
+> | [`imacte/geoip`](https://github.com/imacte/geoip) | **IP 数据**（`geoip.dat`、`Country.mmdb`、`geoip-only-cn-private.dat`） |
+> | [`imacte/v2ray-rules-dat`](https://github.com/imacte/v2ray-rules-dat) | **主力产线**：取上面两者的产物 + 外部列表，发布 `geoip.dat` + `geosite.dat` |
+>
+> 客户端（v2rayN 等）只需要填一个地址：
+> `https://raw.githubusercontent.com/imacte/v2ray-rules-dat/release/{0}.dat`
+>
+> ---
+## 本 fork 做了什么（相对上游）
+
+1. **`geoip.dat` 改为优先取 [`imacte/geoip`](https://github.com/imacte/geoip) 的 Release**，取不到才回退 `Loyalsoldier/geoip` 的 `release` 分支。
+   - 特意用 **Release** 而不是 `release` 分支：分支里可能留着旧文件，普通下载会“成功”，于是悄悄用上过期数据，`--fail` 拦不住。
+   - `geoip.dat` 与它的 `.sha256sum` 始终**同源**，避免校验文件对不上。
+2. **geosite 构建器改用 [`imacte/domain-list-custom`](https://github.com/imacte/domain-list-custom)**（而非上游），这样该仓的 `custom-data/` 才会生效。
+3. **新增一步**：把 `custom/custom-data/*` 拷进 `community/data/`，自定义列表因此会出现在 `geosite.dat` 里。
+
+## 怎么加自己的规则
+
+| 想做什么 | 改哪里 | 说明 |
+|---|---|---|
+| 让域名**直连** | `hidden` 分支的 `direct.txt` | 会并进 `cn` 列表 → 被 `geosite:cn` 和国内 DNS 规则自动覆盖，**无需新增路由规则** |
+| 让域名**走代理** | `hidden` 分支的 `proxy.txt` | 并进 `geolocation-!cn` |
+| 让域名**被拦截** | `hidden` 分支的 `reject.txt` | 并进 `category-ads-all` |
+| 从以上列表**剔除** | `hidden` 分支的 `*-need-to-remove.txt` | |
+| 要一个**独立命名的列表** | `imacte/domain-list-custom` 的 `custom-data/` | 例如生成 `geosite:mygames`；**必须在客户端写规则引用它才会生效** |
+
+> `direct.txt` 等文件里**不要写注释**（`#` 开头的行会进入冗余检测流程）。
+
+## 数据来源
+
+| 产物部分 | 来源 |
+|---|---|
+| `geoip.dat` | `imacte/geoip` 的 Release（回退 `Loyalsoldier/geoip`） |
+| `cn` / `geolocation-!cn` / `category-ads-all` | [felixonmars/dnsmasq-china-list](https://github.com/felixonmars/dnsmasq-china-list) + gfwlist（经 `cokebar/gfwlist2dnsmasq`）+ easylistchina / AdGuard / peterlowe / danpollock 广告列表 + `hidden` 分支覆盖 |
+| `china-list`、`google-cn`、`apple-cn`、`gfw`、`greatfire`、`win-spy`、`win-update`、`win-extra` | felixonmars + [crazy-max/WindowsSpyBlocker](https://github.com/crazy-max/WindowsSpyBlocker) |
+| `geosite.dat` | 由 `imacte/domain-list-custom` 编译上述数据（基础数据来自 [v2fly/domain-list-community](https://github.com/v2fly/domain-list-community)） |
+
+## 触发与产物
+
+- 触发：push 到 `master` / 手动 Run workflow / **每天 22:00 UTC（北京 6:00）**
+- 产物：一个 Release（时间戳标签）+ `release` 分支，含 `geoip.dat`、`geosite.dat`、11 个 txt、`rules.zip`
+
+## 客户端配置（v2rayN 为例）
+
+设置 → 参数设置 → **Geo 文件来源 (可选)**：
+
+```
+https://raw.githubusercontent.com/imacte/v2ray-rules-dat/release/{0}.dat
+```
+
+⚠️ 两个坑：
+
+1. **`{0}` 必须原样保留**，不要从浏览器地址栏复制（浏览器会把它编码成 `%7B0%7D`，导致两个 `.dat` 全部 404 而悄悄保留旧文件）。
+2. 填了自定义来源后，`Country.mmdb` / `geoip-only-cn-private.dat` / `geoip.metadb` **不再自动更新**（这三个是 mihomo/Clash 用的，Xray 内核用不到）。
+
+## 已知注意事项
+
+- fork 的 Actions 默认处于 `disabled_fork` 状态，**必须先在 Actions 页面点一次启用**，否则 push 不会触发构建。
+- 与上游 Sync fork 时，`.github/workflows/run.yml` 会冲突（本 fork 改过它），需手动合并。
+
+---
 # 简介 ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/Loyalsoldier/v2ray-rules-dat/total?logo=github) ![GitHub Downloads (all assets, latest release)](https://img.shields.io/github/downloads/Loyalsoldier/v2ray-rules-dat/latest/total?logo=github) [![jsdelivr stats](https://data.jsdelivr.com/v1/package/gh/Loyalsoldier/v2ray-rules-dat/badge?style=rounded)](https://www.jsdelivr.com/package/gh/Loyalsoldier/v2ray-rules-dat)
 
 [**V2Ray**](https://github.com/v2fly/v2ray-core) 路由规则文件加强版，可代替 V2Ray 官方 `geoip.dat` 和 `geosite.dat`，适用于 [V2Ray](https://github.com/v2fly/v2ray-core)、[Xray-core](https://github.com/XTLS/Xray-core)、[mihomo](https://github.com/MetaCubeX/mihomo/tree/Meta)、[hysteria](https://github.com/apernet/hysteria)、[Trojan-Go](https://github.com/p4gefau1t/trojan-go)、[leaf](https://github.com/eycorsican/leaf) 和所有使用上述内核的图形用户界面（GUI）版代理软件。使用 GitHub Actions 北京时间每天早上 6 点自动构建，保证规则最新。
