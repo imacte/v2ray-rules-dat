@@ -1,70 +1,3 @@
-> **本仓库是上游的 fork，用于个人自建的 geo 规则流水线。**
->
-> 三个仓的分工：
->
-> | 仓库 | 角色 |
-> |---|---|
-> | [`imacte/domain-list-custom`](https://github.com/imacte/domain-list-custom) | `geosite.dat` 的**编译器** + 自定义域名列表（`custom-data/`） |
-> | [`imacte/geoip`](https://github.com/imacte/geoip) | **IP 数据**（`geoip.dat`、`Country.mmdb`、`geoip-only-cn-private.dat`） |
-> | [`imacte/v2ray-rules-dat`](https://github.com/imacte/v2ray-rules-dat) | **主力产线**：取上面两者的产物 + 外部列表，发布 `geoip.dat` + `geosite.dat` |
->
-> 客户端（v2rayN 等）只需要填一个地址：
-> `https://raw.githubusercontent.com/imacte/v2ray-rules-dat/release/{0}.dat`
->
-> ---
-## 本 fork 做了什么（相对上游）
-
-1. **`geoip.dat` 改为优先取 [`imacte/geoip`](https://github.com/imacte/geoip) 的 Release**，取不到才回退 `Loyalsoldier/geoip` 的 `release` 分支。
-   - 特意用 **Release** 而不是 `release` 分支：分支里可能留着旧文件，普通下载会“成功”，于是悄悄用上过期数据，`--fail` 拦不住。
-   - `geoip.dat` 与它的 `.sha256sum` 始终**同源**，避免校验文件对不上。
-2. **geosite 构建器改用 [`imacte/domain-list-custom`](https://github.com/imacte/domain-list-custom)**（而非上游），这样该仓的 `custom-data/` 才会生效。
-3. **新增一步**：把 `custom/custom-data/*` 拷进 `community/data/`，自定义列表因此会出现在 `geosite.dat` 里。
-
-## 怎么加自己的规则
-
-| 想做什么 | 改哪里 | 说明 |
-|---|---|---|
-| 让域名**直连** | `hidden` 分支的 `direct.txt` | 会并进 `cn` 列表 → 被 `geosite:cn` 和国内 DNS 规则自动覆盖，**无需新增路由规则** |
-| 让域名**走代理** | `hidden` 分支的 `proxy.txt` | 并进 `geolocation-!cn` |
-| 让域名**被拦截** | `hidden` 分支的 `reject.txt` | 并进 `category-ads-all` |
-| 从以上列表**剔除** | `hidden` 分支的 `*-need-to-remove.txt` | |
-| 要一个**独立命名的列表** | `imacte/domain-list-custom` 的 `custom-data/` | 例如生成 `geosite:mygames`；**必须在客户端写规则引用它才会生效** |
-
-> `direct.txt` 等文件里**不要写注释**（`#` 开头的行会进入冗余检测流程）。
-
-## 数据来源
-
-| 产物部分 | 来源 |
-|---|---|
-| `geoip.dat` | `imacte/geoip` 的 Release（回退 `Loyalsoldier/geoip`） |
-| `cn` / `geolocation-!cn` / `category-ads-all` | [felixonmars/dnsmasq-china-list](https://github.com/felixonmars/dnsmasq-china-list) + gfwlist（经 `cokebar/gfwlist2dnsmasq`）+ easylistchina / AdGuard / peterlowe / danpollock 广告列表 + `hidden` 分支覆盖 |
-| `china-list`、`google-cn`、`apple-cn`、`gfw`、`greatfire`、`win-spy`、`win-update`、`win-extra` | felixonmars + [crazy-max/WindowsSpyBlocker](https://github.com/crazy-max/WindowsSpyBlocker) |
-| `geosite.dat` | 由 `imacte/domain-list-custom` 编译上述数据（基础数据来自 [v2fly/domain-list-community](https://github.com/v2fly/domain-list-community)） |
-
-## 触发与产物
-
-- 触发：push 到 `master` / 手动 Run workflow / **每天 22:00 UTC（北京 6:00）**
-- 产物：一个 Release（时间戳标签）+ `release` 分支，含 `geoip.dat`、`geosite.dat`、11 个 txt、`rules.zip`
-
-## 客户端配置（v2rayN 为例）
-
-设置 → 参数设置 → **Geo 文件来源 (可选)**：
-
-```
-https://raw.githubusercontent.com/imacte/v2ray-rules-dat/release/{0}.dat
-```
-
-⚠️ 两个坑：
-
-1. **`{0}` 必须原样保留**，不要从浏览器地址栏复制（浏览器会把它编码成 `%7B0%7D`，导致两个 `.dat` 全部 404 而悄悄保留旧文件）。
-2. 填了自定义来源后，`Country.mmdb` / `geoip-only-cn-private.dat` / `geoip.metadb` **不再自动更新**（这三个是 mihomo/Clash 用的，Xray 内核用不到）。
-
-## 已知注意事项
-
-- fork 的 Actions 默认处于 `disabled_fork` 状态，**必须先在 Actions 页面点一次启用**，否则 push 不会触发构建。
-- 与上游 Sync fork 时，`.github/workflows/run.yml` 会冲突（本 fork 改过它），需手动合并。
-
----
 # 简介 ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/Loyalsoldier/v2ray-rules-dat/total?logo=github) ![GitHub Downloads (all assets, latest release)](https://img.shields.io/github/downloads/Loyalsoldier/v2ray-rules-dat/latest/total?logo=github) [![jsdelivr stats](https://data.jsdelivr.com/v1/package/gh/Loyalsoldier/v2ray-rules-dat/badge?style=rounded)](https://www.jsdelivr.com/package/gh/Loyalsoldier/v2ray-rules-dat)
 
 [**V2Ray**](https://github.com/v2fly/v2ray-core) 路由规则文件加强版，可代替 V2Ray 官方 `geoip.dat` 和 `geosite.dat`，适用于 [V2Ray](https://github.com/v2fly/v2ray-core)、[Xray-core](https://github.com/XTLS/Xray-core)、[mihomo](https://github.com/MetaCubeX/mihomo/tree/Meta)、[hysteria](https://github.com/apernet/hysteria)、[Trojan-Go](https://github.com/p4gefau1t/trojan-go)、[leaf](https://github.com/eycorsican/leaf) 和所有使用上述内核的图形用户界面（GUI）版代理软件。使用 GitHub Actions 北京时间每天早上 6 点自动构建，保证规则最新。
@@ -73,7 +6,9 @@ https://raw.githubusercontent.com/imacte/v2ray-rules-dat/release/{0}.dat
 
 ### geoip.dat
 
-- 通过仓库 [@Loyalsoldier/geoip](https://github.com/Loyalsoldier/geoip) 生成
+- 通过仓库 [@imacte/geoip](https://github.com/imacte/geoip) 生成，构建时优先取该仓库 Release 里的 `geoip.dat`；若该仓库尚无可用 Release，则回退 [@Loyalsoldier/geoip](https://github.com/Loyalsoldier/geoip) 的 `release` 分支
+  - 之所以取 **Release** 而不是 `release` 分支：分支里可能残留旧文件，下载会“成功”，从而悄悄用上过期数据，`curl --fail` 也拦不住
+  - `geoip.dat` 与其 `.sha256sum` 始终取自同一来源，避免校验文件对不上
 - 默认使用 [MaxMind GeoLite2 Country CSV 数据](https://github.com/Loyalsoldier/geoip/blob/release/GeoLite2-Country-CSV.zip)生成各个国家和地区的 GeoIP 文件。所有可供使用的国家和地区 geoip 类别（如 `geoip:cn`，两位英文字母表示国家或地区），请查看：[https://www.iban.com/country-codes](https://www.iban.com/country-codes)
 - 中国大陆 (`geoip:cn`) IPv4 地址数据使用 [@gaoyifan/china-operator-ip](https://github.com/gaoyifan/china-operator-ip/blob/ip-lists/china.txt)
 - 中国大陆 (`geoip:cn`) IPv6 地址数据使用 [@gaoyifan/china-operator-ip](https://github.com/gaoyifan/china-operator-ip/blob/ip-lists/china6.txt)
@@ -92,7 +27,9 @@ https://raw.githubusercontent.com/imacte/v2ray-rules-dat/release/{0}.dat
 
 ### geosite.dat
 
-- 基于 [@v2fly/domain-list-community/data](https://github.com/v2fly/domain-list-community/tree/master/data) 数据，通过仓库 [@Loyalsoldier/domain-list-custom](https://github.com/Loyalsoldier/domain-list-custom) 生成
+- 基于 [@v2fly/domain-list-community/data](https://github.com/v2fly/domain-list-community/tree/master/data) 数据，通过仓库 [@imacte/domain-list-custom](https://github.com/imacte/domain-list-custom) 生成
+- **可添加自定义列表**：[@imacte/domain-list-custom](https://github.com/imacte/domain-list-custom) 的 `custom-data/` 目录下，一个文件即一个列表（文件名即列表名，语法与 `domain-list-community/data` 一致，支持 `full:`、`keyword:`、`regexp:`、`include:` 以及 `@cn` 等属性），构建时并入 `geosite.dat`。例如 `custom-data/mygames` 会生成 `geosite:mygames`
+  - 注意：这类列表**需要在客户端路由规则里显式引用才会生效**。若目的只是让某些域名直连，直接写进 [`hidden 分支`](https://github.com/imacte/v2ray-rules-dat/tree/hidden) 的 `direct.txt` 更省事——它会并入 `geosite:cn`，被现有规则自动覆盖
 - **加入大量中国大陆域名、Apple 域名和 Google 域名**：
   - [@felixonmars/dnsmasq-china-list/accelerated-domains.china.conf](https://github.com/felixonmars/dnsmasq-china-list/blob/master/accelerated-domains.china.conf) 加入到 `geosite:china-list` 和 `geosite:cn` 类别中
   - [@felixonmars/dnsmasq-china-list/apple.china.conf](https://github.com/felixonmars/dnsmasq-china-list/blob/master/apple.china.conf) 加入到 `geosite:geolocation-!cn` 类别中（如希望本文件中的 Apple 域名直连，请参考下面 [geosite 的 Routing 配置方式](https://github.com/Loyalsoldier/v2ray-rules-dat#geositedat-1)）
@@ -114,6 +51,23 @@ https://raw.githubusercontent.com/imacte/v2ray-rules-dat/release/{0}.dat
 - **可添加自定义直连、代理和广告域名**：由于上游域名列表更新缓慢或缺失某些域名，所以引入**需要添加的域名**列表。[`hidden 分支`](https://github.com/Loyalsoldier/v2ray-rules-dat/tree/hidden)里的三个文件 `direct.txt`、`proxy.txt` 和 `reject.txt`，分别存放自定义的需要添加的直连、代理、广告域名，最终分别加入到 `geosite:cn`、`geosite:geolocation-!cn` 和 `geosite:category-ads-all` 类别中
 - **可移除自定义直连、代理和广告域名**：由于上游域名列表存在需要被移除的域名，所以引入**需要移除的域名**列表。[`hidden 分支`](https://github.com/Loyalsoldier/v2ray-rules-dat/tree/hidden)里的三个文件 `direct-need-to-remove.txt`、`proxy-need-to-remove.txt` 和 `reject-need-to-remove.txt`，分别存放自定义的需要从 `direct-list`（直连域名列表）、`proxy-list`（代理域名列表）和 `reject-list`（广告域名列表） 移除的域名
 
+## 客户端配置（以 v2rayN 为例）
+
+设置 → 参数设置 → **Geo 文件来源 (可选)**，填入：
+
+```
+https://raw.githubusercontent.com/imacte/v2ray-rules-dat/release/{0}.dat
+```
+
+- `{0}` 会被客户端分别替换为 `geoip` 和 `geosite`，**必须原样保留**
+- 不要从浏览器地址栏复制该地址：浏览器会把 `{` `}` 编码成 `%7B` `%7D`，导致两个文件全部 404，而客户端只会保留旧文件，不易察觉
+- 填写自定义来源后，`Country.mmdb`、`geoip-only-cn-private.dat`、`geoip.metadb` 不再由客户端自动更新（这三个文件供 mihomo/Clash 使用，Xray 内核用不到）
+
+## 维护说明
+
+- 构建触发：push 到 `master`、手动 Run workflow、以及**每天 22:00 UTC（北京时间 6:00）**的定时任务
+- fork 仓库的 Actions 默认处于 `disabled_fork` 状态，**需要先在 Actions 页面启用一次**，否则 push 不会触发构建
+- 与上游 Sync fork 时，`.github/workflows/run.yml` 会产生冲突（本仓库修改过该文件），需要手动合并
 ## 规则文件下载地址
 
 > 如果无法访问域名 `raw.githubusercontent.com`，可以使用第二个地址 `cdn.jsdelivr.net`。
