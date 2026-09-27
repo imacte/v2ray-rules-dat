@@ -37,10 +37,10 @@ jobs:
         with:
           ref: hidden
 
-      - name: Checkout Loyalsoldier/domain-list-custom
+      - name: Checkout imacte/domain-list-custom
         uses: actions/checkout@v7
         with:
-          repository: Loyalsoldier/domain-list-custom
+          repository: imacte/domain-list-custom
           path: custom
 
       - name: Checkout v2fly/domain-list-community
@@ -63,8 +63,18 @@ jobs:
 
       - name: Get geoip.dat relative files
         run: |
-          wget https://github.com/Loyalsoldier/geoip/raw/release/geoip.dat
-          wget https://github.com/Loyalsoldier/geoip/raw/release/geoip.dat.sha256sum
+          # 优先取 imacte/geoip 的 Release 产物；还没有 Release 时回退 Loyalsoldier/geoip 的 release 分支。
+          # 之所以用 Release 而不是 imacte/geoip 的 release 分支：那个分支里目前还留着 2026-01-22 的旧文件，
+          # 下载会"成功"，于是悄悄用上 7 个月前的数据，--fail 也拦不住。
+          BASE="https://github.com/imacte/geoip/releases/latest/download"
+          if ! curl -sSL --fail --retry 3 --connect-timeout 10 -o geoip.dat "$BASE/geoip.dat"; then
+            echo "imacte/geoip 暂无可用 Release，回退 Loyalsoldier/geoip 的 release 分支"
+            BASE="https://github.com/Loyalsoldier/geoip/raw/release"
+            curl -sSL --fail --retry 3 --connect-timeout 10 -o geoip.dat "$BASE/geoip.dat"
+          fi
+          # sha256sum 与 geoip.dat 必须同源，否则校验文件对不上
+          curl -sSL --fail --retry 3 --connect-timeout 10 -o geoip.dat.sha256sum "$BASE/geoip.dat.sha256sum"
+          ls -l geoip.dat geoip.dat.sha256sum
 
       - name: Generate GFWList domains
         run: |
@@ -165,6 +175,14 @@ jobs:
           curl -sSL $WIN_UPDATE | grep "0.0.0.0" | awk '{print $2}' > win-update.txt
           curl -sSL $WIN_EXTRA | grep "0.0.0.0" | awk '{print $2}' > ./community/data/win-extra
           curl -sSL $WIN_EXTRA | grep "0.0.0.0" | awk '{print $2}' > win-extra.txt
+
+      - name: Add custom lists from custom-data
+        run: |
+          if [ -d ./custom/custom-data ] && [ -n "$(ls -A ./custom/custom-data)" ]; then
+            cp -v ./custom/custom-data/* ./community/data/
+          else
+            echo "custom/custom-data/ 为空或不存在，跳过（自定义列表放在 imacte/domain-list-custom 的 custom-data/ 目录）"
+          fi
 
       - name: Build geosite.dat file
         run: |
