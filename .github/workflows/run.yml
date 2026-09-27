@@ -176,13 +176,6 @@ jobs:
           curl -sSL $WIN_EXTRA | grep "0.0.0.0" | awk '{print $2}' > ./community/data/win-extra
           curl -sSL $WIN_EXTRA | grep "0.0.0.0" | awk '{print $2}' > win-extra.txt
 
-      - name: Add custom lists from custom-data
-        run: |
-          if [ -d ./custom/custom-data ] && [ -n "$(ls -A ./custom/custom-data)" ]; then
-            cp -v ./custom/custom-data/* ./community/data/
-          else
-            echo "custom/custom-data/ 为空或不存在，跳过（自定义列表放在 imacte/domain-list-custom 的 custom-data/ 目录）"
-          fi
 
       - name: Build geosite.dat file
         run: |
