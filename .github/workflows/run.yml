@@ -37,10 +37,10 @@ jobs:
         with:
           ref: hidden
 
-      - name: Checkout Loyalsoldier/domain-list-custom
+      - name: Checkout imacte/domain-list-custom
         uses: actions/checkout@v7
         with:
-          repository: Loyalsoldier/domain-list-custom
+          repository: imacte/domain-list-custom
           path: custom
 
       - name: Checkout v2fly/domain-list-community
